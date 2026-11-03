@@ -88,12 +88,25 @@ macros/tests/        reconcile_row_count, reconcile_sum, unique_grain
 models/staging/      stg_orders (re-synced duplicates left in), stg_order_lines (the spine)
 models/marts/        fct_order_lines (fixed), fct_order_lines_buggy (broken on purpose)
 analyses/            reconcile_report: the table above
+.claude/skills/      reconcile-review: the agent skill
+examples/            a review the skill produced
 scripts/             generate_data.py: synthetic data with a realistic long tail
 ```
 
+## Agent skill: reconcile-review
+
+The repo ships an [Agent Skill](.claude/skills/reconcile-review/SKILL.md) that does this review for you. It reads the declared grain from every place it's stated, finds the table the model is built from, checks each dedup and join against that grain, builds in dev, reconciles rows and totals, and drafts a review comment with the numbers.
+
+- **Claude Code:** open this repo and ask *"review fct_order_lines_buggy, the spec says one row per order line"*. The skill loads automatically. To use it in your own dbt project, copy `.claude/skills/reconcile-review/` into that project (or into `~/.claude/skills/`).
+- **Other agents:** `SKILL.md` is plain Markdown with the checks and SQL spelled out, so it works as instructions for any coding agent.
+- **Guardrails built in:** dev target only, always `--select`, counts and totals only in the comment, and it drafts but never posts.
+
+Example output on the buggy model: [examples/review_fct_order_lines_buggy.md](examples/review_fct_order_lines_buggy.md). Besides the dropped lines, it flags that the dedup's sort key ties within each order, so *which* line survives is arbitrary between builds.
+
 ## Roadmap
 
-- [ ] An agent skill that reviews a fact table this way: reads the spec, runs the reconciliation, and writes the numbers into the PR comment
+- [x] An agent skill that reviews a fact table this way (`reconcile-review`)
+- [ ] Run the skill in CI on changed models and post the comment as a PR check
 - [ ] Package the tests for `dbt deps`
 - [ ] Grain checks for incremental models
 
