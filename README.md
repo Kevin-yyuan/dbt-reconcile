@@ -1,6 +1,6 @@
 # dbt-reconcile
 
-[![demo](https://github.com/Kevin-yyuan/dbt-reconcile/actions/workflows/ci.yml/badge.svg)](https://github.com/Kevin-yyuan/dbt-reconcile/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 
 **Catch the fact-table bugs that pass every test.** Three small dbt tests that reconcile a model to the table it's built from (row counts, totals, and grain), plus a runnable demo of the bug they exist to catch.
 
