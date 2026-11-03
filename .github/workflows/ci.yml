@@ -1,0 +1,40 @@
+name: demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Seed data is reproducible
+        run: |
+          python scripts/generate_data.py
+          git diff --exit-code seeds/
+
+      - name: Fixed model passes every test
+        run: dbt build --exclude tag:broken_on_purpose
+
+      - name: Buggy model fails the reconciliation tests (and only those)
+        run: |
+          if dbt build --select fct_order_lines_buggy; then
+            echo "::error::fct_order_lines_buggy passed. The reconciliation tests should have caught it."
+            exit 1
+          fi
+          dbt test --select fct_order_lines_buggy,test_name:unique fct_order_lines_buggy,test_name:unique_grain
+
+      - name: Reconciliation report
+        run: dbt show --select reconcile_report
