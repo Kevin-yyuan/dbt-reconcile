@@ -77,6 +77,26 @@ models:
                 # tolerance: 0.01
 ```
 
+## Already using dbt_utils or dbt-expectations?
+
+Then you may not need these macros. The checks matter more than whose macro runs them:
+
+| This repo | Closest existing test | Difference |
+|---|---|---|
+| `reconcile_row_count` | `dbt_utils.equal_rowcount` · `dbt_expectations.expect_table_row_count_to_equal_other_table` | `equal_rowcount` has no filter on the compare side. The dbt-expectations test does (`compare_row_condition`). |
+| `reconcile_sum` | `dbt_expectations.expect_table_aggregation_to_equal_other_table` | dbt_utils has no cross-table total check. dbt-expectations does, with tolerance and group-by. |
+| `unique_grain` | `dbt_utils.unique_combination_of_columns` | No real difference. Both group by the key, so null keys count as one group. |
+| (none) | `dbt_utils.equality` | Compares every row and column. That's stronger, but it needs matching columns and costs more on big tables. Use it when a refactor should change nothing. |
+| (none) | `audit_helper.compare_relations` and friends | Analyses, not tests. Good for a one-off diff during a migration. |
+
+So why does this repo have its own?
+
+- **No dependencies.** Each macro is about 20 lines of SQL you can read in one go and copy into a project that can't add packages.
+- **The demo is the point.** The bug passes every uniqueness test, and only a reconciliation check against the source catches it. Run it once and the habit sticks.
+- **The agent skill doesn't care whose tests you use.** `reconcile-review` runs the row and total comparison itself and drafts the review comment.
+
+If your project already has dbt_utils or dbt-expectations, wire those tests up the same way: put them on the fact table, compare against the table it's built from, and test the grain the spec says, not the dedup key.
+
 ## How to use them well
 
 1. **Write the grain down before the SQL.** "One row per order line" in the description, `unique_grain` on the line key, and the incremental key to match. If the three disagree, something's wrong.
@@ -110,7 +130,7 @@ Example output on the buggy model: [examples/review_fct_order_lines_buggy.md](ex
 
 - [x] An agent skill that reviews a fact table this way (`reconcile-review`)
 - [ ] Run the skill in CI on changed models and post the comment as a PR check
-- [ ] Package the tests for `dbt deps`
+- [ ] Let the skill read dbt_utils and dbt-expectations tests too, not only these three
 - [ ] Grain checks for incremental models
 
 ## Background
