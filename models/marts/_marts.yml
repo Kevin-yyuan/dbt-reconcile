@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: fct_order_lines
+    description: One row per order line, with order attributes. Reconciles to stg_order_lines on rows and amount.
+    data_tests:
+      - reconcile_row_count:
+          arguments:
+            compare_model: ref('stg_order_lines')
+      - unique_grain:
+          arguments:
+            columns: [order_line_id]
+    columns:
+      - name: order_line_id
+        data_tests: [not_null]
+      - name: amount
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_order_lines')
+
+  - name: fct_order_lines_buggy
+    description: >
+      Broken on purpose: the dedup partitions by order_id, so the table is one
+      row per order instead of one row per line. The `unique` test on order_id
+      passes (the dedup made it true); the reconciliation tests catch it.
+    config:
+      tags: [broken_on_purpose]
+    data_tests:
+      - reconcile_row_count:
+          arguments:
+            compare_model: ref('stg_order_lines')
+      - unique_grain:
+          arguments:
+            columns: [order_line_id]
+    columns:
+      - name: order_id
+        description: The trap. Unique, because the dedup forced it to be.
+        data_tests: [unique, not_null]
+      - name: amount
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_order_lines')

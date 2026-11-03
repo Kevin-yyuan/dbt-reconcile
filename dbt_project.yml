@@ -1,0 +1,27 @@
+name: dbt_reconcile
+version: "0.1.0"
+config-version: 2
+profile: dbt_reconcile
+
+model-paths: [models]
+seed-paths: [seeds]
+macro-paths: [macros]
+analysis-paths: [analyses]
+
+models:
+  dbt_reconcile:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+seeds:
+  dbt_reconcile:
+    raw_orders:
+      +column_types:
+        ordered_at: timestamp
+        updated_at: timestamp
+    raw_order_lines:
+      +column_types:
+        amount: decimal(18, 2)
+        updated_at: timestamp

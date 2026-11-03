@@ -1,0 +1,8 @@
+# Local DuckDB file, no account or credentials needed.
+dbt_reconcile:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: dbt_reconcile.duckdb
+      threads: 4
