@@ -23,6 +23,8 @@ Partition by the wrong key and the table quietly becomes a different table. In t
 | `fct_order_lines` (fixed) | 5,391 | 723,134 | 100.0 | 100 |
 | `fct_order_lines_buggy` | 2,000 | 267,278 | **37.1** | **37** |
 
+<p align="center"><img src="docs/dedup-rows.gif" alt="Row count of the buggy model falling from 100% to 37.1% of the source" width="360"></p>
+
 And nothing complains:
 
 - It runs.
@@ -135,6 +137,6 @@ Example output on the buggy model: [examples/review_fct_order_lines_buggy.md](ex
 
 ## Background
 
-Written alongside the article *The one-line dedup that quietly dropped most of the rows* on [LinkedIn](https://www.linkedin.com/in/kevin-yy/). More projects at [kevinyy.com](https://www.kevinyy.com/).
+Written alongside the article [*The one-line dedup that quietly dropped most of the rows*](https://www.linkedin.com/pulse/one-line-dedup-quietly-dropped-most-rows-kevin-y--qbwkc/) on LinkedIn. More projects at [kevinyy.com](https://www.kevinyy.com/).
 
 All data is synthetic. MIT licensed.
