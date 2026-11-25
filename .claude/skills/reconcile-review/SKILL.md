@@ -31,11 +31,34 @@ Review fact and mart models first; staging models only if asked.
 Read the model's SQL and its YAML. Record the grain from **every** place it's stated:
 
 - the description ("one row per …")
-- uniqueness tests (`unique`, `unique_grain`, `dbt_utils.unique_combination_of_columns`)
+- uniqueness tests, from any package (see the table below)
 - `unique_key` in the config (incremental models)
 - `constraints` (primary key / unique)
 
 If they disagree, that's finding #1, whatever the data says. If none exist, ask the user what one row should mean before going further.
+
+Read whichever tests the project already has, under `data_tests:` or the older `tests:`, with or without the `arguments:` key:
+
+| Reads as | Test | Where the key or comparison is |
+|---|---|---|
+| Grain | `unique` | the column it's on |
+| Grain | `unique_grain` | `columns` |
+| Grain | `dbt_utils.unique_combination_of_columns` | `combination_of_columns` |
+| Grain | `dbt_expectations.expect_column_values_to_be_unique` | the column it's on |
+| Grain | `dbt_expectations.expect_compound_columns_to_be_unique` | `column_list` |
+| Rows | `reconcile_row_count`, `dbt_utils.equal_rowcount`, `dbt_expectations.expect_table_row_count_to_equal_other_table` | `compare_model` |
+| Totals | `reconcile_sum`, `dbt_expectations.expect_table_aggregation_to_equal_other_table` | `compare_model`, `expression` |
+| Rows and values | `dbt_utils.equality` | `compare_model`, `compare_columns` |
+
+Check how each test is set up, and note in the review anything that makes it weaker than it looks:
+
+- a filter (`where` in the config, `row_condition`, `compare_row_condition`) the spec doesn't mention
+- a `factor` other than 1, or a `tolerance` / `tolerance_percent` above zero
+- `severity: warn`, or `enabled: false`
+- `compare_model` pointing at something that isn't the spine, or that shares the model's dedup
+- `expect_compound_columns_to_be_unique` skips rows where every key column is null unless `ignore_row_if` says otherwise
+
+A uniqueness test that passes doesn't replace the row and total checks in step 5. An existing rows or totals test against the right spine is good evidence: report its result, and still show the numbers.
 
 ### 3. Find the spine
 
@@ -104,7 +127,9 @@ Note: uniqueness tests catch duplicates, not missing rows. A model can be unique
 
 ### 6. Recommend tests (if missing)
 
-If the model doesn't already have them, suggest adding (from this repo's `macros/tests/`, or equivalents):
+Count equivalent tests from the table in step 2 as already there. If something is still missing, suggest it **in the package the project already uses**; don't add a dependency or a second copy of the same check.
+
+No package (macros from this repo's `macros/tests/`):
 
 ```yaml
 data_tests:
@@ -117,6 +142,28 @@ columns:
     data_tests:
       - reconcile_sum:
           arguments: {compare_model: ref('<spine>')}
+```
+
+dbt_utils (it has no cross-table total test, so keep the total check in the review or add `reconcile_sum`):
+
+```yaml
+data_tests:
+  - dbt_utils.equal_rowcount:
+      arguments: {compare_model: ref('<spine>')}
+  - dbt_utils.unique_combination_of_columns:
+      arguments: {combination_of_columns: [<grain cols>]}
+```
+
+dbt-expectations:
+
+```yaml
+data_tests:
+  - dbt_expectations.expect_table_row_count_to_equal_other_table:
+      arguments: {compare_model: ref('<spine>')}
+  - dbt_expectations.expect_table_aggregation_to_equal_other_table:
+      arguments: {expression: sum(<measure>), compare_model: ref('<spine>')}
+  - dbt_expectations.expect_compound_columns_to_be_unique:
+      arguments: {column_list: [<grain cols>]}
 ```
 
 ### 7. Draft the review

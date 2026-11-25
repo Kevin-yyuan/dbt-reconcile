@@ -11,10 +11,12 @@
 | `<measure>` total | <n> | <n> | ✅ / ❌ <diff> (<pct>%) |
 | Unique on `<grain>` | <dupes> dupes | | ✅ / ❌ |
 
+**Existing tests:** <test: pass / fail / weakened by …>, or none
+
 **Findings**
 1. `<file>:<line>`: <what's wrong, in one sentence>. **Fix:** <concrete change>.
 2. …
 
-**Suggested tests:** <reconcile_row_count / reconcile_sum / unique_grain, if missing>
+**Suggested tests:** <rows / totals / grain test, in the package the project uses, if missing>
 
 <Built in dev with `dbt build --select <model>`; counts and totals only.>

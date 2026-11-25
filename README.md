@@ -95,7 +95,7 @@ So why does this repo have its own?
 
 - **No dependencies.** Each macro is about 20 lines of SQL you can read in one go and copy into a project that can't add packages.
 - **The demo is the point.** The bug passes every uniqueness test, and only a reconciliation check against the source catches it. Run it once and the habit sticks.
-- **The agent skill doesn't care whose tests you use.** `reconcile-review` runs the row and total comparison itself and drafts the review comment.
+- **The agent skill doesn't care whose tests you use.** `reconcile-review` reads dbt_utils and dbt-expectations tests as well as these, flags settings that weaken them (a filter, a tolerance, `severity: warn`), runs the row and total comparison itself, and suggests missing tests in the package you already use.
 
 If your project already has dbt_utils or dbt-expectations, wire those tests up the same way: put them on the fact table, compare against the table it's built from, and test the grain the spec says, not the dedup key.
 
@@ -134,7 +134,7 @@ Example output on the buggy model: [examples/review_fct_order_lines_buggy.md](ex
 
 - [x] An agent skill that reviews a fact table this way (`reconcile-review`)
 - [ ] Run the skill in CI on changed models and post the comment as a PR check
-- [ ] Let the skill read dbt_utils and dbt-expectations tests too, not only these three
+- [x] Let the skill read dbt_utils and dbt-expectations tests too, not only these three
 - [ ] Grain checks for incremental models
 
 ## Background
