@@ -122,6 +122,8 @@ scripts/             generate_data.py: synthetic data with a realistic long tail
 
 The repo ships an [Agent Skill](.claude/skills/reconcile-review/SKILL.md) that does this review for you. It reads the declared grain from every place it's stated, finds the table the model is built from, checks each dedup and join against that grain, builds in dev, reconciles rows and totals, and drafts a review comment with the numbers.
 
+<p align="center"><img src="docs/skill-review.gif" alt="The agent reads the guardrails, then the steps, then drafts a review: rows at 37% of the source, totals short by the same share" width="360"></p>
+
 - **Claude Code:** open this repo and ask *"review fct_order_lines_buggy, the spec says one row per order line"*. The skill loads automatically. To use it in your own dbt project, copy `.claude/skills/reconcile-review/` into that project (or into `~/.claude/skills/`).
 - **Other agents:** `SKILL.md` is plain Markdown with the checks and SQL spelled out, so it works as instructions for any coding agent.
 - **Guardrails built in:** dev target only, always `--select`, counts and totals only in the comment, and it drafts but never posts.
@@ -137,6 +139,6 @@ Example output on the buggy model: [examples/review_fct_order_lines_buggy.md](ex
 
 ## Background
 
-Written alongside the article [*The one-line dedup that quietly dropped most of the rows*](https://www.linkedin.com/pulse/one-line-dedup-quietly-dropped-most-rows-kevin-y--qbwkc/) on LinkedIn. More projects at [kevinyy.com](https://www.kevinyy.com/).
+Written alongside two LinkedIn articles: [*The one-line dedup that quietly dropped most of the rows*](https://www.linkedin.com/pulse/one-line-dedup-quietly-dropped-most-rows-kevin-y--qbwkc/) (the bug and the tests) and [*Skills are runbooks your agent can read*](https://www.linkedin.com/pulse/skills-runbooks-your-agent-can-read-kevin-y--quvjc/) (the review skill). More projects at [kevinyy.com](https://www.kevinyy.com/).
 
 All data is synthetic. MIT licensed.
