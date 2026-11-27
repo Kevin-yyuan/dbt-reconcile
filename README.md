@@ -34,6 +34,23 @@ And nothing complains:
 
 Even a uniqueness test on the right grain (`unique_grain` on `order_line_id`) passes: there are fewer rows, not duplicate ones. **Uniqueness tests catch duplicates. Only reconciliation catches missing rows.**
 
+## The second bug: a join that fans out
+
+`fct_orders_net` is one row per order: gross, refunds, net. An order can have several partial refunds. `fct_orders_net_buggy` joins orders straight to refunds, so an order with three refunds matches three times and its gross is counted three times:
+
+```sql
+left join {{ ref('stg_refunds') }} as r      -- one row per refund, not per order
+    on r.order_id = o.order_id
+```
+
+| model | rows | gross | refunds | net | % of true net |
+|---|---:|---:|---:|---:|---:|
+| `stg_order_totals` (spine) | 2,000 | 723,134 | | | |
+| `fct_orders_net` (fixed) | 2,000 | 723,134 | 22,437.50 | 700,696.50 | 100.0 |
+| `fct_orders_net_buggy` | 2,276 | 823,719 | 22,437.50 | 801,281.50 | **114.4** |
+
+Net revenue goes *up* when refunds are added. The refund total still reconciles, because every refund appears exactly once; it's the orders that got counted again. `reconcile_row_count` and `reconcile_sum` on gross catch it, and so does `unique_grain` on `order_id`, if someone wrote the grain down. The fix: add refunds up per order first, then join one to one.
+
 ## Quickstart
 
 ```bash
@@ -44,6 +61,7 @@ pip install -r requirements.txt                       # or: uv pip install -r re
 
 dbt build --exclude tag:broken_on_purpose   # the fixed model: all tests pass
 dbt build --select fct_order_lines_buggy    # the buggy model: reconciliation tests fail
+dbt build --select fct_orders_net_buggy     # the fan-out: rows and gross fail, refunds still pass
 dbt show --select reconcile_report          # side-by-side counts and totals
 ```
 
@@ -110,12 +128,13 @@ If your project already has dbt_utils or dbt-expectations, wire those tests up t
 
 ```
 macros/tests/        reconcile_row_count, reconcile_sum, unique_grain
-models/staging/      stg_orders (re-synced duplicates left in), stg_order_lines (the spine)
-models/marts/        fct_order_lines (fixed), fct_order_lines_buggy (broken on purpose)
+models/staging/      stg_orders (re-synced duplicates left in), stg_order_lines (the line spine),
+                     stg_order_totals (the order spine), stg_refunds (partial refunds)
+models/marts/        fct_order_lines and fct_orders_net (fixed), *_buggy (broken on purpose)
 analyses/            reconcile_report: the table above
 .claude/skills/      reconcile-review: the agent skill
 examples/            a review the skill produced
-scripts/             generate_data.py: synthetic data with a realistic long tail
+scripts/             generate_data.py: synthetic data with a realistic long tail and partial refunds
 ```
 
 ## Agent skill: reconcile-review

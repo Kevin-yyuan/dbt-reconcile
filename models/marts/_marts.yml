@@ -42,3 +42,57 @@ models:
           - reconcile_sum:
               arguments:
                 compare_model: ref('stg_order_lines')
+
+  - name: fct_orders_net
+    description: One row per order with gross, refunds and net. Reconciles to stg_order_totals on rows and gross, and to stg_refunds on refunds.
+    data_tests:
+      - reconcile_row_count:
+          arguments:
+            compare_model: ref('stg_order_totals')
+      - unique_grain:
+          arguments:
+            columns: [order_id]
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: gross_amount
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_order_totals')
+      - name: refund_amount
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_refunds')
+                compare_column: amount
+
+  - name: fct_orders_net_buggy
+    description: >
+      Broken on purpose: joins orders to refunds without adding refunds up per
+      order first, so orders with several refunds fan out. Refunds still
+      reconcile (each is counted once); rows and gross do not.
+    config:
+      tags: [broken_on_purpose]
+    data_tests:
+      - reconcile_row_count:
+          arguments:
+            compare_model: ref('stg_order_totals')
+      - unique_grain:
+          arguments:
+            columns: [order_id]
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: gross_amount
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_order_totals')
+      - name: refund_amount
+        description: The trap. Reconciles, because every refund still appears exactly once.
+        data_tests:
+          - reconcile_sum:
+              arguments:
+                compare_model: ref('stg_refunds')
+                compare_column: amount

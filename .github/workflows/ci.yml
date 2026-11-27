@@ -36,5 +36,13 @@ jobs:
           fi
           dbt test --select fct_order_lines_buggy,test_name:unique fct_order_lines_buggy,test_name:unique_grain
 
+      - name: Fan-out model fails rows, gross and grain (refunds still reconcile)
+        run: |
+          if dbt build --select fct_orders_net_buggy; then
+            echo "::error::fct_orders_net_buggy passed. The reconciliation tests should have caught the fan-out."
+            exit 1
+          fi
+          dbt test --select fct_orders_net_buggy,test_name:not_null reconcile_sum_fct_orders_net_buggy_refund_amount__amount__ref_stg_refunds_
+
       - name: Reconciliation report
         run: dbt show --select reconcile_report

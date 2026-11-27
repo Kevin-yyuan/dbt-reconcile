@@ -6,7 +6,9 @@ The data has the two things real source data tends to have:
 - many single-line orders and a long tail of multi-line ones, so a grain bug
   hits the big orders hardest;
 - re-synced duplicates (the same order or line loaded again with a later
-  updated_at), which is why the models need a dedup at all.
+  updated_at), which is why the models need a dedup at all;
+- partial refunds: some orders have one, some have several, which is what
+  makes a join from orders to refunds fan out.
 """
 
 import csv
@@ -17,6 +19,10 @@ from pathlib import Path
 SEED = 42
 N_ORDERS = 2_000
 RESYNC_RATE = 0.08  # share of orders / lines that arrive twice
+REFUND_SEED = 43     # separate stream, so adding refunds left the other seeds unchanged
+REFUND_RATE = 0.18   # share of orders with at least one partial refund
+REFUNDS_PER_ORDER_WEIGHTS = {1: 45, 2: 30, 3: 25}
+EXAMPLE_ORDER = 205  # the order from the episode: three partial refunds of 50, 30 and 20
 
 SEEDS_DIR = Path(__file__).resolve().parent.parent / "seeds"
 
@@ -72,7 +78,34 @@ def main() -> None:
         ["order_line_id", "order_id", "line_number", "sku", "quantity", "amount", "updated_at"],
         lines,
     )
+    refunds = make_refunds(orders, lines)
+    write(SEEDS_DIR / "raw_refunds.csv", ["refund_id", "order_id", "amount", "refunded_at"], refunds)
     print(f"raw_orders: {len(orders):,} rows · raw_order_lines: {len(lines):,} rows ({line_id:,} distinct lines)")
+    print(f"raw_refunds: {len(refunds):,} rows on {len({r[1] for r in refunds}):,} orders")
+
+
+def make_refunds(orders: list[list], lines: list[list]) -> list[list]:
+    """Partial refunds, at most half an order's value in total. One row per refund."""
+    rng = random.Random(REFUND_SEED)
+    gross: dict[int, float] = {}
+    for line_id, order_id, *_, amount, _updated in {row[0]: row for row in lines}.values():
+        gross[order_id] = gross.get(order_id, 0) + amount
+    ordered_at = {row[0]: row[2] for row in orders}
+
+    refunds, refund_id = [], 0
+    for order_id in range(1, N_ORDERS + 1):
+        if order_id == EXAMPLE_ORDER:
+            amounts = [50.0, 30.0, 20.0]
+        elif rng.random() < REFUND_RATE:
+            n = rng.choices(list(REFUNDS_PER_ORDER_WEIGHTS), weights=REFUNDS_PER_ORDER_WEIGHTS.values())[0]
+            amounts = [round(gross[order_id] * rng.uniform(0.04, 0.16), 2) for _ in range(n)]
+        else:
+            continue
+        for i, amount in enumerate(amounts, start=1):
+            refund_id += 1
+            refunded_at = ordered_at[order_id] + timedelta(days=rng.randint(2, 20), minutes=i)
+            refunds.append([refund_id, order_id, amount, refunded_at])
+    return refunds
 
 
 def write(path: Path, header: list[str], rows: list[list]) -> None:

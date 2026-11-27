@@ -8,6 +8,7 @@ fixed:
 
 buggy:
 	-dbt build --select fct_order_lines_buggy
+	-dbt build --select fct_orders_net_buggy
 
 report:
 	dbt show --select reconcile_report
